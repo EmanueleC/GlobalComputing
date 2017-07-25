@@ -1,0 +1,286 @@
+\newpage
+\section{Approfondimento - Concorrenza in Rust}
+
+\subsection{Overview}
+
+\begin{itemize}
+  \item Linguaggio nato nel 2010, sviluppato da Mozilla
+  \item Rivolto alla programmazione di sistem
+  \item Linguaggio compilato
+  \item Linguaggio staticamente tipato (utilizza type inference)
+  \item Caratteristiche dai paradigmi di programmazione procedurale e funzionale
+  \item Sintassi molto simile a C/C++
+
+\end{itemize}
+
+\subsection{Memory Safety}
+
+\textit{Nota: per brevità, tralascio la sintassi di Rust e i suoi costrutti
+principali; mi dedicherò solamente alla parte di concorrenza} \\
+
+Rust è un linguaggio che tiene particolarmente alla cosiddetta \textbf{memory
+safety}, una proprietà che assicura la protezione da bugs e vulnerabilità quando
+si ha a che fare con la memoria (errori di accesso, variabili non inizializzate,
+memory leaks, \dots).
+
+Per far fronte a queste problematiche, utilizza un sistema chiamato
+\textbf{ownership system}, che ha lo scopo di segnalare al programmatore un
+utilizzo non sicuro della memoria a tempo di compilazione.
+
+Accanto alla memory safety, un altro degli obiettivi di Rust è quello di essere
+un linguaggio in grado di gestire codice concorrente in modo sicuro.
+
+L'ambito della concorrenza è storicamente complesso ed è più facile commettere
+degli errori. Rust affronta la questione facendo affidamento sul suo ownership
+system. Dopotutto alcuni errori sono comuni (le data races sono errori logici di
+accesso alla memoria ed errori di concorrenza).
+
+\subsection{Regole del sistema di Ownership}
+
+\begin{itemize}
+  \item Ogni valore è legato a un owner, che può essere una variabile, una funzione
+o un thread.
+  \item Ogni valore può avere un solo owner alla volta.
+  \item Quando l'owner di un valore va out of scope, il valore viene scartato.
+\end{itemize}
+
+\subsection{Regole di borrowing}
+
+Ogni borrow (prestito dell'ownership) deve avere uno scope \textbf{non più grande} di
+quello dell’owner (non può vivere più a lungo).
+
+Inoltre, possono valere le seguenti condizioni \textbf{in mutua esclusione}:
+
+\begin{itemize}
+\item \textbf{Uno o più riferimenti immutabili} a una risorsa
+\item Esattamente \textbf{un riferimento mutabile} a una risorsa
+\end{itemize}
+
+\subsection{Creazione di un thread}
+
+Un nuovo thread può essere creato tramite la funzione \texttt{thread::spawn}:
+
+\begin{minted}{rust}
+use std::thread;
+
+thread::spawn(move || {
+    // some work here
+});
+\end{minted}
+
+Un thread genitore può attendere il completamento dell'esecuzione del thread
+figlio: una chiamata a \texttt{thread::spawn} produce un \texttt{JoinHandle},
+che fornisce una funzione join per l'attesa:
+
+\begin{minted}{rust}
+use std::thread;
+
+let child = thread::spawn(move || {
+    // some work here
+});
+// some work here
+let res = child.join();
+\end{minted}
+
+La funzione join ritorna un \texttt{Result} contenente un valore di tipo
+\texttt{Ok} se non ci sono stati errori, oppure \texttt{Err}.
+
+\subsection{Prevenzione delle data races}
+
+\textbf{Data races}: accessi multipli \textbf{non sincronizzati} alla
+medesima posizione in memoria di cui almeno uno di essi è in scrittura.
+
+Il sistema di ownership di Rust, combinato alle regole di borrowing,
+sembra offrire una sincronizzazione implicita agli accessi in memoria,
+che previene qualsiasi data race.
+
+Come esempio il seguente programma Rust, contenente una data race
+in altri linguaggi, non compila:
+
+\begin{minted}{rust}
+use std::thread;
+use std::time:: Duration;
+
+fn main() {
+    let mut data = vec![1, 2, 3]; // shared mutable state!
+
+    for i in 0..3 {
+        thread::spawn(move || {
+            data[0] += i; // operation on data
+        });
+    }
+
+    thread::sleep(Duration::from_millis(50));
+}
+\end{minted}
+
+L’errore è il seguente:
+
+\begin{minted}{rust}
+8:17 error: capture of moved value: data
+        data[0] += i;
+        ^~~~
+\end{minted}
+
+Rust sa che questo comportamento non è sicuro. Se avessimo un riferimento a data
+in ogni thread, e i threads prendessero l’ownership del riferimento, avremmo
+tre owners. Questo errore è chiamato \textbf{use of moved value}, causato dal
+tentativo di utilizzare un dato di cui non si detiene l'ownership.
+
+\paragraph{Message Passing:}
+
+Un approccio alla concorrenza che sembra crescere in popolarità è il
+message passing, dove i threads (o attori) comunicano inviando fra loro
+messaggi che contengono dati.
+A tal proposito, lo slogan di Go dice: \\
+
+``Do not communicate by sharing memory; instead, share memory by
+communicating.'' - Effective Go \\
+
+I canali sono lo strumento principale per raggiungere questo obiettivo.
+
+In Rust è presente il modulo \texttt{std::sync::mpsc} (Multi-producer,
+single-consumer) che fornisce delle primitive per la comunicazione
+message-based, che può avvenire per mezzo dei seguenti tipi:
+
+\begin{itemize}
+  \item Sender
+  \item SyncSender
+  \item Receiver
+\end{itemize}
+
+Un \texttt{Sender} o un \texttt{SyncSender} può essere usato per
+inviare dati a un \texttt{Receiver}.
+
+Questi canali possono essere:
+
+\begin{itemize}
+  \item asincroni, unbounded (si può pensare che abbiano un buffer infinito).
+La tupla ritornata dalla primitiva \texttt{std::sync::mpsc::channel} avrà
+tipo (Sender, Receiver), e tutti gli invii sono non bloccanti.
+
+  \item sincroni, bounded, bloccanti. La tupla ritornata dalla primitiva
+
+\texttt{std::sync::mpsc::sync\_channel} avrà tipo (SyncSender, Receiver),
+in cui il buffer per i messaggi pendenti sarà di una dimensione fissata.
+Tutti gli invii sono bloccanti (se il buffer è pieno, attende fino a che non si libera).
+\end{itemize}
+
+Questa scelta è diversa da Go, dove le send e le receive sono,
+di base, bloccanti (a meno di una clausola default all'interno di una
+select, o la specifica della dimensione del buffer).
+
+In un'implementazione del problema dei prigionieri o dei 5 filosofi,
+l'utilizzo di canali con un \texttt{SyncSender} è d'obbligo, altrimenti,
+ad esempio, il counterPrisoner potrebbe accendere la lampadina
+infinite volte e poi dichiarare freedom anche se non tutti i
+prigionieri sono stati nella stanza.
+
+Esempio d'uso dei canali in Rust:
+
+\begin{minted}{rust}
+
+use std::thread;
+use std::sync::mpsc;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let val = String::from("hi");
+        tx.send(val).unwrap();
+    });
+
+    let received = rx.recv().unwrap();
+    println!("Got: {}", received);
+}
+\end{minted}
+
+\textbf{Come i canali interagiscono con il meccanismo di ownership}
+
+Nel seguente esempio si tenta di usare un valore nel thread dopo averlo inviato
+sul canale:
+
+\begin{minted}{rust}
+
+use std::thread;
+use std::sync::mpsc;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let val = String::from("hi");
+        tx.send(val).unwrap();
+        println!("val is {}", val); // moved value!
+    });
+
+    let received = rx.recv().unwrap();
+    println!("Got: {}", received);
+}
+\end{minted}
+
+Questa è una cattiva idea: una volta che abbiamo inviato il valore a un altro
+thread, quel thread può modificarlo o prima che il sender
+lo utilizzi di nuovo. Questo potrebbe causare errori dovuti alla non-esistenza
+o inconsistenza dei dati.
+
+Se proviamo a compilare l'esempio, Rust segnala:
+
+
+\begin{minted}{rust}
+
+error[E0382]: use of moved value: val
+  --> src/main.rs:10:31
+   |
+9  |         tx.send(val).unwrap();
+   |                 --- value moved here
+10 |         println!("val is {}", val);
+   |                               ^^^ value used here after move
+   |
+   = note: move occurs because val has type std::string::String,
+which does not implement the Copy trait
+
+\end{minted}
+
+Questo errore di concorrenza ha causato un errore di compilazione.
+Send prende l'ownership dei suoi parametri e sposta (moves) il valore
+in modo da passare l'ownerhip al ricevente.
+
+Questo significa che non è possibile utilizzare il valore di nuovo dopo averlo
+inviato.
+
+In questo contesto, message passing è molto simile a single ownership: se solo
+un thread alla volta può usare della memoria, non c'è il rischio di data race
+(in alternativa, si può sempre passare una copia del valore).
+
+Si nota che il sistema di Ownership di Rust e le regole di borrowing prevengono
+solamente le data races e non tutte le race conditions che possono verificarsi
+durante l'esecuzione di un programma concorrente (ad esempio, i deadlocks possono
+comunque verificarsi).
+
+\subsection{Aspetti positivi}
+
+\begin{itemize}
+  \item Commenti dettagliati da parte del compilatore in risposta agli errori
+che aiutano a individuare il problema
+  \item Niente npe, niente dangling pointers
+  \item Niente data races
+\end{itemize}
+
+\subsection{Aspetti negativi}
+
+\begin{itemize}
+  \item Lunghi tempi di apprendimento
+  \item Lotta contro il compilatore (difficile comprensione del sistema di
+ownership e delle regole di borrowing) da parte dei programmatori
+\end{itemize}
+
+\subsection{Aspetti neutri}
+
+\begin{itemize}
+  \item Linguaggio giovane (nato nel 2010)
+  \item Librerie, guide e tutorial in fase di espansione
+  \item Niente eccezioni
+  \item Da valutare la scelta in base a due indicatori: performances e memory safety.
+\end{itemize}

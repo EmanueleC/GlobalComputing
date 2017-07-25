@@ -1,0 +1,249 @@
+\newpage
+\section{Prisoners game}
+
+\paragraph{Testo del problema:}
+50 prigionieri si trovano rinchiusi in celle separate e di tanto in tanto
+vengono portati singolarmente in una stanza speciale (senza un ordine,
+possibilmente più volte di seguito).
+
+La stanza è completamente vuota a eccezione di una lampadina che può accendersi
+o spegnersi (la luce non è visibile dall'esterno e non si può rompere).
+
+In ogni momento, ciascun prigioniero può dire che tutti sono stati nella stanza
+con la lampadina. Se è vero, allora tutti verranno liberati (ma se non lo è
+resteranno imprigionati per sempre).
+
+Prima che la sfida cominci, i prigionieri possono stabilire insieme un
+\textbf{protocollo} da seguire per vincere il gioco.
+
+Attenzione: \textit{lo stato iniziale della lampadina non è noto}.
+
+\subsection{Una possibile soluzione}
+
+Sia n il numero di prigionieri.
+
+Il protocollo che i prigionieri devono rispettare è il seguente:
+
+\paragraph{Protocollo - Soluzione:}
+
+Viene scelto un \textbf{CounterPrisoner}, che avrà una speciale responsabilità.
+
+Tutti gli altri prigionieri si devono comportare nel modo seguente: ognuno di
+loro spegne la luce solo le prime due volte che la trova accesa e la lascia
+così com'è tutte le altre.
+
+Il \textbf{CounterPrisoner} accende la luce se la trova spenta e tiene il conto
+del numero di volte che lo fa. Quando raggiunge \textbf{2*(n - 1)} può dire che tutti
+i prigionieri sono stati nella stanza.
+
+In una versione alternativa del problema, quella in cui si conosce lo stato
+iniziale della lampadina, CounterPrisoner dovrebbe contare solo la metà
+delle volte \textbf{n - 1}.
+
+\subsection{Modellazione del protocollo in CCS}
+
+Le entità principali individuate sono:
+
+\begin{itemize}
+\item $Prisoner_i, \quad i = [1, n-1]$
+\item \textbf{Counter prisoner}
+\item \textbf{Bulb/Light}
+\item Sistema: \textbf{Sys}
+\end{itemize}
+
+e si traducono tutte in processi CCS, che comunicano fra loro attraverso i
+canali \textbf{on e off} (i prigionieri devono sincronizzarsi con la lampadina).
+
+Sono stati aggiunti anche dei canali enter e freedom, utili per esprimere delle
+proprietà del sistema (analogamente a quanto è stato fatto nella traduzione in
+CCS dell'algoritmo di Peterson, con le etichette $enter_i$/$exit_i$).
+
+Enter e freedom sono canali pubblici.
+
+In questa prima modellazione i prigionieri si ``fermano'' dopo aver svolto il ruolo
+imposto dal protocollo (dopo aver spento due volte la lampadina).
+
+Una conseguenza di questa decisione è l'assenza di livelock: non è possibile che un
+prigioniero entri per sempre nella stanza e che gli altri rimangano ad aspettare.
+
+Di seguito viene dato un esempio del sistema con 4 prigionieri.
+Il contatore dovrà accendere 2*(4 - 1) = 6 volte la lampadina per essere certo che tutti
+i prigionieri siano entrati nella cella. \\
+
+$Prisoner1 = enter.\overline{off}.Prisoner1Off;$
+
+$Prisoner1Off = \overline{off}.0;$ \\
+
+$Prisoner2 = enter.\overline{off}.Prisoner2Off;$
+
+$Prisoner2Off = \overline{off}.0;$ \\
+
+$Prisoner3 = enter.\overline{off}.Prisoner3Off;$
+
+$Prisoner3Off = \overline{off}.0;$ \\
+
+
+$CounterPrisoner = \overline{on}.CounterPrisoner1;$
+
+$CounterPrisoner1 = \overline{on}.CounterPrisoner2;$
+
+$CounterPrisoner2 = \overline{on}.CounterPrisoner3;$
+
+$CounterPrisoner3 = \overline{on}.CounterPrisoner4;$
+
+$CounterPrisoner4 = \overline{on}.CounterPrisoner5;$
+
+$CounterPrisoner5 = \overline{on}.\overline{freedom}.0;$ \\
+
+$Light = LightOn + LightOff;$
+
+$LightOn = off.LightOff;$
+
+$LightOff = on.LightOn;$ \\
+
+$Sys = (Prisoner1 | Prisoner2 | Prisoner3 | CounterPrisoner | Light) \setminus \{on, off\};$ \\
+
+La seguente specifica Spec serve a indicare il comportamento atteso della
+soluzione:
+
+\begin{equation*}
+Spec = enter.enter.enter.\overline{freedom}.0;
+\end{equation*}
+
+Solamente dopo che i tre prigionieri sono entrati nella stanza, è possibile che
+il CounterPrisoner dichiari $\overline{freedom}$.
+
+La specifica si preoccupa di descrivere il comportamento del sistema ad alto
+livello, quindi la relazione da usare non può essere la bisimilarità forte, ma
+quella debole:
+
+\begin{equation*}
+Sys \approx Spec
+\end{equation*}
+
+ed è soddisfatta.
+
+Non è un caso che le etichette $enter_i$ siano state inserite prima che i
+prigionieri eseguano $\overline{off}$: se fossero state inserite dopo, la 
+relazione non sarebbe più stata soddisfatta.
+
+Infatti c'è un caso in cui il counterPrisoner può dire $\overline{freedom}$
+prima che tutti i prigionieri abbiano spento due volte la luce, ed è quello
+in cui lo stato iniziale della lampadina sia spento (ciò non causa problemi
+perché tutti i prigionieri devono comunque spegnerla almeno una volta). \\
+
+Vale la seguente proprietà (\textit{Even(<$\overline{freedom}$>tt)}):
+
+\begin{equation*}
+Sys \models X \quad
+  X \quad min= <\overline{freedom}>tt \lor (<->tt \land [-]X)
+\end{equation*}
+
+Il CounterPrisoner prima o poi dirà che tutti i prigionieri sono stati nella
+stanza e dichiarerà freedom. \\
+
+La proprietà di \textit{livelock = Pos(Cycle)} (esiste uno stato raggiungibile
+in cui c'è un loop interno):
+
+\begin{equation*}
+Sys \models Livelock
+\end{equation*}
+\begin{equation*}
+Livelock \quad min= Cycle \lor <->Livelock; \quad
+Cycle \quad max= <tau>Cycle;
+\end{equation*}
+
+non è soddisfatta. \\
+
+Vale la proprietà di fine esecuzione: dopo che il CounterPrisoner ha dichiarato
+freedom, nessun prigioniero può fare una transizione enter.
+
+Dapprima si verifica che la proprietà $Pos(<\overline{freedom}><enter>tt)$:
+
+\begin{equation*}
+Sys \models Y
+\end{equation*}
+\begin{equation*}
+Y \quad min= <\overline{freedom}><enter>tt \lor <->Y;
+\end{equation*}
+
+non sia soddisfatta.
+
+Una volta effettuata la traduzione in $\neg Inv(\neg <\overline{freedom}><enter>tt>)$,
+che corrisponde a $\neg Inv([\overline{freedom}][enter]ff)$, si verifica la sua negazione:
+
+\begin{equation*}
+Sys \models Z
+\end{equation*}
+\begin{equation*}
+Z \quad max= [\overline{freedom}][enter]ff \land [-]Z;
+\end{equation*}
+
+ed è soddisfatta. \\
+
+\textbf{Nota}: se c'è un solo prigioniero, allora questo dovrà essere per forza il
+counter prisoner (che appena entra nella stanza dichiara freedom).
+In questo modello, conta fino a 2*(n - 1) che è 0 se c'è un solo prigioniero.
+
+\subsection{Possibilità di livelock}
+
+Una seconda modellazione, che tenga conto della possibilità per un prigioniero di entrare
+più volte nella stanza con la lampadina, inserisce un ciclo interno in ogni processo
+prigioniero, dopo due successivi spegnimenti della lampadina.
+
+In questo modo un livelock è possibile, anche se questo non preclude l'esistenza di un
+cammino che porti il counterPrisoner a dichiarare freedom. \\
+
+$Prisoner1 = enter.\overline{off}.Prisoner1Off;$
+
+$Prisoner1Off = \overline{off}.Wait;$ \\
+
+$Prisoner2 = enter.\overline{off}.Prisoner2Off;$
+
+$Prisoner2Off = \overline{off}.Wait;$ \\
+
+$Prisoner3 = enter.\overline{off}.Prisoner3Off;$
+
+$Prisoner3Off = \overline{off}.Wait;$ \\
+
+$Wait = tau.Wait;$ \\
+
+Il sistema è ancora debolmente bisimile alla specifica precedente. Le proprietà che cambiano
+sono quelle di livelock (che ovviamente diventa vera) ed eventually freedom, che diventa
+falsa.
+
+Invece, vale la proprietà più debole $Pos(<\overline{freedom}>tt)$: esiste uno stato raggiungibile
+in cui il counterPrisoner dichiara freedom.
+
+\subsection{Implementazione in Go}
+
+L'implementazione in Go ricalca la definizione dei processi CCS, a eccezione
+della lampadina.
+
+La lampadina possiede uno stato iniziale non noto; questo si riflette
+nell'impossibilità di renderla ``stateless'' e nell'inserimento della scelta
+if-then-else basata sul suo stato corrente.
+
+\begin{minted}{go}
+// Bulb behaviour
+func (self *Bulb) Run () {
+  for {
+    if self.on {
+      <- self.Off
+      fmt.Printf("Light switched off \n")
+      self.on = false;
+    } else {
+      <- self.On
+      fmt.Printf("Light switched on \n")
+      self.on = true;
+    }
+  }
+}
+\end{minted}
+
+per quanto riguarda i canali On e Off, sono canali bidirezionali di interi
+(l'invio di un intero su On/Off corrisponde all'accensione/spegnimento).
+
+Ogni processo è stato trasformato in una go routine, lanciata nel main.
+
+

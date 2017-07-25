@@ -1,0 +1,262 @@
+\newpage
+\section{Esercizi}
+
+\subsection{Esercizio D - Trace equivalence}
+
+\textbf{Dimostrare che la trace equivalence è una congruenza per il CCS.}
+
+Dati 2 processi, P $\Re$ Q, $\Re$ è una congruenza sse: $\forall$ C[ ], $\quad C[P] \quad \Re \quad C[Q].$
+
+Occorre dimostrare che: $P \sim_t Q \implies \forall$ C[ ], $\quad C[P] \sim_t C[Q]$.
+
+\subsubsection{Dimostrazione per casi}
+
+In ogni caso, l'ipotesi è che $Traces(P) = Traces(Q)$.
+
+Di seguito userò la seguente convenzione: $\alpha.Traces(X) = \{ \alpha.x_1...x_k | \alpha.X \xrightarrow[]{\alpha} X \xrightarrow[]{x_1} ... \xrightarrow[]{x_k} X_k, k \geq 0\}$
+
+\paragraph{Contesto vuoto}
+
+C[ ] $= \emptyset \implies C[P] = C[Q] = \emptyset \implies C[P] \sim_t C[Q]$.
+
+\paragraph{Prefisso $\alpha$}
+
+C[ ] $= \alpha ...$
+
+$Traces(C[P]) = Traces(\alpha.P) = \alpha.Traces(P)$.
+
+Per ipotesi Traces(P) = Traces(Q), quindi $\alpha.Traces(P) = \alpha.Traces(Q) = Traces(\alpha.Q)$.
+
+L'equivalenza è preservata: $C[P] \sim_t C[Q]$.
+
+\paragraph{Contesto non deterministico}
+
+C[ ] $= ( \quad + R)$
+
+Se si dimostra che $\forall$ P,R processi CCS $Traces(P + R) = Traces(P) \cup Traces(R)$ allora anche $Traces(Q + R) = Traces(Q) \cup Traces(R)$. Per ipotesi Traces(P) = Traces(Q), quindi $Traces(P + R) = Traces(Q + R)$.
+
+\paragraph{($\subseteq$)}
+
+Sia $t \in Traces(P + R)$. Ci sono 2 possibilità:
+
+1 - P+R ha effettuato una transizione usando la regola SUM1:
+
+\begin{prooftree}
+\AxiomC{$P \xrightarrow[]{a_1} P'$}
+\UnaryInfC{$P + R \xrightarrow[]{a_1} P'$}
+\end{prooftree}
+
+In questo caso $t \in a_1.Traces(P') \subseteq Traces(P)$ quindi $t \in Traces(P)$.
+
+2 - P+R ha effettuato una transizione usando la regola SUM2:
+
+\begin{prooftree}
+\AxiomC{$R \xrightarrow[]{r_1} R'$}
+\UnaryInfC{$P + R \xrightarrow[]{r_1} R'$}
+\end{prooftree}
+
+In questo caso $t \in r_1.Traces(R') \subseteq Traces(R)$ quindi $t \in Traces(R)$.
+
+\paragraph{($\supseteq$)}
+
+Sia $t \in Traces(P) \cup Traces(R)$. 
+
+Allora t è una traccia di P o t è una traccia di R o di entrambi. 
+
+Se $t \in Traces(P)$, P+R può effettuare una transizione usando la regola SUM1, così $t \in Traces(P+R)$.
+
+Se $t \in Traces(R)$, P+R può effettuare una transizione usando la regola SUM2, così $t \in Traces(P+R)$.
+
+Se la traccia t appartiene sia a P che R allora la regola che P + R segue per effettuare una transizione è indifferente.
+
+\paragraph{Contesto parallelo}
+
+C[ ] = | R.
+
+Occorre dimostrare che Traces(P|R) = Traces(Q|R) \\
+
+Dapprima dimostro il seguente fatto: dati tre processi CCS A,B e C
+
+\begin{equation}
+\begin{aligned}
+\label{eq:th}
+Traces(A) \subseteq Traces(B) \implies (\forall n \in N, |t| = n, \\
+t \in Traces(A|C) \implies t \in Traces(B|C)).
+\end{aligned}
+\end{equation} \\
+
+Poiché Traces(P) = Traces(Q), l'inclusione vale in entrambi i versi e
+
+si conclude che $\forall n \in N, |t| = n, t \in Traces(P|R) \iff t \in Traces(Q|R)$,
+
+che equivale a dire che $Traces(P|R) = Traces(Q|R).$ \\
+
+Prima di procedere con la dimostrazione di \ref{eq:th}, si dimostra il seguente
+lemma:
+
+Siano H, K due processi CCS:
+
+\begin{equation}
+\begin{aligned}
+\label{eq:lem}
+Traces(H) = Traces(K) \implies (H \xrightarrow[]{\alpha} H' \implies \\
+Traces(H') \subseteq Traces(\sum \{ K' | K \xrightarrow[]{\alpha} K' \}) \forall \alpha)
+\end{aligned}
+\end{equation} \\
+
+Dimostrazione \ref{eq:lem} \\
+
+$ Traces(\sum \{ K' | K \xrightarrow[]{\alpha} K' \}) = \bigcup_{K \xrightarrow[]{\alpha} K'} Traces(K') = 
+\{ t' | t = \alpha.t' , t \in Traces(K) \} = \{ t' | t = \alpha.t' , t \in Traces(H) \}. $
+
+$ Traces(H') \subseteq \{ t' | t = \alpha.t' , t \in Traces(H) \} = Traces(\sum \{ K' | K \xrightarrow[]{\alpha} K' \}) $ \\
+
+Questo lemma verrà usato nella dimostrazione di \ref{eq:th}. \\
+
+Dimostrazione \ref{eq:th} (per induzione sulla lunghezza della traccia t) \\
+
+\textbf{Caso base}: |t| = 0 ($\epsilon \in Traces(P|R) \implies \epsilon \in Traces(Q|R)$) : vero \\
+
+\textbf{Ipotesi induttiva}: l'enunciato vale su una qualsiasi traccia t, |t| = n. \\
+
+\textbf{Caso induttivo} |t| = n + 1.
+
+Sia $t \in Traces(P|R)$. Ci sono tre possibilità: \\
+
+1 - P|R ha effettuato una transizione usando la regola COM1:
+
+\begin{prooftree}
+\AxiomC{$P \xrightarrow[]{a_1} P'$}
+\UnaryInfC{$P | R \xrightarrow[]{a_1} P' | R$}
+\end{prooftree}
+
+$t = a_1.t', |t'| = n, t' \in Traces(P'|R)$ \\
+
+Ipotesi induttiva applicata a $t'$: \\
+
+Per il lemma \ref{eq:lem}, $Traces(P') \subseteq  Traces(\sum \{ Q' | Q \xrightarrow[]{a_1} Q' \}) \implies \\
+t' \in Traces(P'|R) \implies t' \in Traces(\sum_{Q \xrightarrow[]{a_1} Q'} Q'|R).$ \\
+
+Da questo segue che $t \in a_1.Traces(\sum_{Q \xrightarrow[]{a_1} Q'} Q'|R) = a_1.Traces(\sum_{Q \xrightarrow[]{a_1} Q'} (Q'|R)) \\
+= Traces(a_1.(\sum_{Q \xrightarrow[]{a_1} Q'} (Q'|R))) = Traces(\sum_{Q \xrightarrow[]{a_1} Q'} a_1.(Q'|R)) = \\
+\bigcup_{Q \xrightarrow[]{a_1} Q'} Traces(a_1.(Q'|R))$\\
+
+A questo punto, poiché il processo Q|R è in grado di muoversi con un passo $a_1$ in un processo $Q'|R$ applicando la regola COM1,
+si conclude che $t \in Traces(Q|R).$ \\
+
+2 - P|R ha effettuato una transizione usando la regola COM2:
+
+\begin{prooftree}
+\AxiomC{$R \xrightarrow[]{r_1} R'$}
+\UnaryInfC{$P | R \xrightarrow[]{r_1} P| R'$}
+\end{prooftree}
+
+$t = r_1.t', |t'| = n, t' \in Traces(P|R')$ \\
+
+Ipotesi induttiva applicata a $t'$: \\
+
+Per il lemma \ref{eq:lem}, $Traces(P) \subseteq  Traces(Q) \implies t' \in Traces(P|R') \implies t' \in Traces(Q|R').$ \\
+
+Da questo segue che $t \in r_1.Traces(Q|R') \implies t \in Traces(r_1.(Q|R')).$
+
+A questo punto, poiché il processo Q|R è in grado di muoversi con un passo $r_1$ applicando la regola COM2,
+si conclude che $t \in Traces(Q|R).$ \\
+
+3 - P|R ha effettuato una transizione usando la regola COM3:
+
+\begin{prooftree}
+\AxiomC{$P \xrightarrow[]{a_x} P'$}
+\AxiomC{$R \xrightarrow[]{\overline{a_x}} R'$}
+\BinaryInfC{$P | R \xrightarrow[]{\tau} P'| R'$}
+\end{prooftree}
+
+$t = \tau.t', |t'| = n, t' \in Traces(P'|R')$ \\
+
+Ipotesi induttiva applicata a $t'$: \\
+
+Per il lemma \ref{eq:lem}, $Traces(P') \subseteq  Traces(\sum \{ Q' | Q \xrightarrow[]{a_x} Q' \}) \implies \\
+t' \in Traces(P'|R') \implies t' \in Traces(\sum_{Q \xrightarrow[]{a_x} Q'} Q'|R').$ \\
+
+Da questo segue che $t \in \tau.Traces(\sum_{Q \xrightarrow[]{a_x} Q'} Q'|R') = \tau.Traces(\sum_{Q \xrightarrow[]{a_x} Q'} (Q'|R')) \\
+= Traces(\tau.(\sum_{Q \xrightarrow[]{a_x} Q'} (Q'|R'))) = Traces(\sum_{Q \xrightarrow[]{a_x} Q'} \tau.(Q'|R')) = \\
+\bigcup_{Q \xrightarrow[]{a_x} Q'} Traces(\tau.(Q'|R'))$ \\
+
+A questo punto, poiché il processo Q è in grado di sincronizzarsi con il processo R,
+Q|R può muoversi con un'azione $\tau$ in un processo $Q'|R'$, quindi si può concludere che $t \in Traces(Q|R).$
+
+\paragraph{Contesto con ri-etichettatura}
+
+C[ ] =  [f]
+
+\begin{equation*}
+f: Act \to Act \quad t.c \quad f(\tau) = \tau \land \forall a \in \mathcal{L}, f(\overline{a}) = \overline{f(a)}
+\end{equation*}
+
+Dimostrare che Traces(P[f]) = Traces(Q[f]):
+
+\paragraph{($\subseteq$)}
+
+Sia $tp \in Traces(P), tp = a_1.a_2.a_3...$. Allora $tp' = f(a_1).f(a_2).f(a_3)... \in Traces(P[f]).$
+Per ipotesi, $tp \in Traces(Q)$. Allora $tp' = f(a_1).f(a_2).f(a_3)... \in Traces(Q[f]).$
+
+\paragraph{($\supseteq$)}: analogo.
+
+\paragraph{Contesto con restrizione}
+
+C[ ] = $\setminus L, L \subseteq \mathcal{L}$
+
+$Traces(C[P]) = Traces(P \setminus L) = Traces(P) \setminus \{ t = ...a_k... | a_k \in L\}$
+
+$Traces(C[Q]) = Traces(Q \setminus L) = Traces(Q) \setminus \{ t = ...a_k... | a_k \in L\}$
+
+$Traces(P) = Traces(Q) \implies Traces(P) \setminus \{ t = ...a_k... | a_k \in L\} = Traces(Q) \setminus \{ t = ...a_k... | a_k \in L\}$
+
+\subsection{Esercizio U}
+
+\textbf{Mostrare la coincidenza di string bisimilarity e strong bisimilarity}
+
+$\Re$ è \textbf{string bisimulation} se:\\
+
+se P $\Re$ Q e P $\xrightarrow[]{a_1} ... \xrightarrow[]{a_n}$ P', allora Q $\xrightarrow[]{a_1} ... \xrightarrow[]{a_n}$ Q' e P' $\Re$ Q';
+
+se P $\Re$ Q e Q $\xrightarrow[]{a_1} ... \xrightarrow[]{a_n}$ Q', allora P $\xrightarrow[]{a_1} ... \xrightarrow[]{a_n}$ P' e P' $\Re$ Q'. \\
+
+P $\sim_{string}$ Q se $\exists \Re$ string bisimulation tale che P $\Re$ Q.
+
+Dimostrare che $P \sim Q \Leftrightarrow P \sim_{string} Q $.
+
+Dimostro che i due tipi di bisimulazione sono equivalenti, così devono esserlo anche le bisimilarità.
+
+\paragraph{($\Longleftarrow$)}
+
+Se P $\Re_{string}$ Q, allora applicando la definizione per una qualsiasi sequenza di azioni $\sigma$ di lunghezza 1, $\sigma = \alpha \in \mathcal{L}:$ \\
+
+se P $\xrightarrow[]{\alpha} P'$, allora Q $\xrightarrow[]{\alpha} Q'$ e $P'$ $\Re_{string}$ $Q'$ + duale \\
+
+che coincide con la definizione di strong bisimulation.
+
+\paragraph{($\Longrightarrow$)}
+
+Idea: per n = 1 è evidente, per n > 1 occorre applicare la definizione di $\sim$ in più passi.
+
+Dimostrazione per induzione sulla lunghezza della sequenza di azioni $\sigma$.
+
+\paragraph{$|\sigma| = 1 \quad \sigma = \alpha \in \mathcal{L}$}
+
+In questo caso la definizione di string bisimulation e strong bisimulation coincidono.
+
+\paragraph{$|\sigma| > 1$}
+
+Ipotesi induttiva: $\forall \Re$ strong bisimulation, P $\Re$ Q $\implies \exists \Re_{string}$ per una sequenza di azioni $\sigma,
+|\sigma| = n$ tale che P $\Re_{string}$ Q.
+
+Sia $|\sigma| = n + 1$ e $\Re$ strong bisimulation.
+
+P $\Re$ Q $\implies$ (per ipotesi induttiva) $\exists \Re_{string}$ per una sequenza di azioni $\sigma,
+|\sigma| = n$ tale che P $\Re_{string}$ Q.
+
+Inoltre P $\Re$ Q $\implies$ $P_n$ $\Re$ $Q_n$. In questo caso vale: \\
+
+se $P_n \xrightarrow[]{\alpha} P_{n+1}$, allora $Q_n \xrightarrow[]{\alpha} Q_{n+1}$ e $P_{n+1}$ $\Re$ $Q_{n+1}$ + duale \\
+
+Così la lunghezza della sequenza di azioni $\sigma$ relativa alla string bisimulation $\Re_{string}$ può essere estesa a n+1.
